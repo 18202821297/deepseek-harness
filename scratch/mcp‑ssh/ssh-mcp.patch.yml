@@ -1,0 +1,10 @@
+- insert:
+  - id: mcp-ssh
+    name: '@deepseek-ai/dsh-mcp-client'
+    config:
+      serverName: ssh
+      transport: stdio
+      command: /Users/mac/Documents/脚本/deepseek-harness/scratch/mcp‑ssh/venv/bin/python3
+      args:
+        - /Users/mac/Documents/脚本/deepseek-harness/scratch/mcp‑ssh/mcp_ssh_server.py
+      cwd: /Users/mac/Documents/脚本/deepseek-harness/scratch/mcp‑ssh

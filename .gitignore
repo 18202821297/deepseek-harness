@@ -40,3 +40,7 @@ worktrees/
 .typert-*/
 .workbuddy/
 .workbuddy/
+*/venv/
+**/__pycache__/
+*.pyc
+scratch/**/.env
