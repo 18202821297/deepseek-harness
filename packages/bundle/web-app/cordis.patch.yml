@@ -65,6 +65,14 @@
       name: '@deepseek-ai/dsh-message-feedback'
       config:
         maxNoteBytes: 8192
+    # DingTalk message channels: webhook + bot delivery; the 'dingtalk' Remote.
+    - id: dingtalk-host
+      name: '@deepseek-ai/dsh-dingtalk-host'
+
+    # PVE server task-log collector: SSH reads /var/log/pve/tasks, dedupes by
+    # UPID and alerts through the message-channel Remote.
+    - id: pve-host
+      name: '@deepseek-ai/dsh-pve-host'
 
     # Browser Session export: `/export` command plus the shared download dialog.
     - id: session-log-download
@@ -245,6 +253,12 @@
     # assistant-message action strip, over the messageFeedback Remote.
     - id: ui-message-feedback
       name: '@deepseek-ai/dsh-client-ui-message-feedback'
+    # Message-channel settings tabs (DingTalk bot/webhook, PVE collector).
+    - id: ui-wh-im-channels
+      name: '@deepseek-ai/dsh-client-ui-wh-im-channels'
+
+    - id: ui-wh-pve
+      name: '@deepseek-ai/dsh-client-ui-wh-pve'
 
     # Model selection: the /model popupSelect + composer seat over session.models.
     - id: ui-model-selection

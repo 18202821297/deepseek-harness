@@ -1,0 +1,311 @@
+/* Sidebar + content shell for multi-provider channel configuration. */
+
+.shell {
+  display: flex;
+  min-height: 520px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  font-size: 14px;
+  color: #1f2329;
+  background: #ffffff;
+}
+
+/* Left navigation: one entry per integration (DingTalk now, Feishu later). */
+.sidebar {
+  width: 168px;
+  flex: 0 0 168px;
+  background: #f7f8fa;
+  border-right: 1px solid #e5e7eb;
+  padding: 16px 12px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #1f2329;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.navItem:hover:not(:disabled) {
+  background: #eef0f3;
+}
+
+.navItemActive {
+  background: #e6f0ff;
+  border-color: #2f7df6;
+  color: #2f7df6;
+  font-weight: 600;
+}
+
+.navBadge {
+  font-size: 11px;
+  color: #f59e0b;
+  border: 1px solid #f59e0b;
+  border-radius: 4px;
+  padding: 0 6px;
+  line-height: 16px;
+}
+
+/* Right content area. */
+.main {
+  flex: 1;
+  padding: 20px 22px;
+  overflow-y: auto;
+}
+
+.pageTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+.panel {
+  max-width: 760px;
+}
+
+.error {
+  color: #d92f2f;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+/* Cards group each channel kind. */
+.card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+
+.cardTitle {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 14px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.cardHeader .cardTitle {
+  margin: 0;
+}
+
+.form {
+  margin-bottom: 14px;
+}
+
+.formRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 18px;
+  align-items: flex-end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.formActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.presetField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.presetGroup {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.presetCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.presetCard:hover {
+  border-color: #2f7df6;
+}
+
+.presetCardActive {
+  border-color: #2f7df6;
+  background: #f5f9ff;
+}
+
+.presetCard input[type='radio'] {
+  margin-top: 2px;
+  flex: 0 0 auto;
+}
+
+.presetCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.presetCardName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2329;
+}
+
+.presetCardDescription {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.45;
+}
+
+.presetCustomInput {
+  margin-top: 4px;
+}
+
+.channelList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.channelItem {
+  padding: 10px 12px;
+  border: 1px solid #eef0f3;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.channelMain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.channelMeta {
+  flex: 1 1 160px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.channelName {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.channelSub {
+  font-size: 12px;
+  color: #8a9099;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.channelRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 320px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.sendInput {
+  width: 220px;
+  flex: 0 0 auto;
+}
+
+.channelActions {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+.result {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f0f1f3;
+  font-size: 12px;
+  color: #2f7df6;
+}
+
+/* Delete-confirmation dialog. */
+.deleteMessage {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: #1f2329;
+}
+
+.deleteOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: #d4380d;
+  cursor: pointer;
+}
+
+
+/* Feishu placeholder. */
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  color: #8a9099;
+  gap: 8px;
+}
+
+.placeholderTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2329;
+}
+
+/* Cap the add/edit dialog so it never stretches edge-to-edge vertically.
+ * The dialog height is bounded to the viewport minus the Modal root's 24px
+ * padding on each side; the inner content scrolls while the footer stays put. */
+.modalDialog {
+  max-height: calc(100vh - 48px);
+}
+
+.modalContent {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}

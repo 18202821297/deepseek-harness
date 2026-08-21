@@ -40,6 +40,11 @@ peerDependencyRules:
 allowBuilds:
   esbuild: true
   lefthook: true
+  # ssh2 (PVE collector SSH transport) rebuilds its optional native crypto
+  # binding on install; cpu-features is an optional accelerator - deny it and
+  # ssh2 silently falls back to its pure-JS implementation.
+  ssh2: true
+  cpu-features: false
   # Cross-platform boundary for the persistent PTY backend, including ConPTY on Windows.
   node-pty: true
   # Pulled in by @earendil-works/pi-ai (optional LLM API backend). pnpm lists

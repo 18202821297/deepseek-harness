@@ -51,6 +51,12 @@
     },
     {
       "path": "../../typert/protocol"
+    },
+    {
+      "path": "../../dingtalk/dingtalk-host"
+    },
+    {
+      "path": "../../pve/pve-host"
     }
   ]
 }
