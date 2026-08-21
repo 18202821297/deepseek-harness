@@ -9,7 +9,6 @@
     { "path": "../ui-primitives" },
     { "path": "../ui-slots" },
     { "path": "../ui-settings" },
-    { "path": "../web-react" },
     { "path": "../../api/remotes/tsconfig.client.json" },
     { "path": "../../dingtalk/dingtalk-host" },
     { "path": "../../settings/settings" },
