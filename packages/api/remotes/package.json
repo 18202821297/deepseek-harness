@@ -77,7 +77,8 @@
     "@deepseek-ai/dsh-typert-registry": "workspace:^",
     "@deepseek-ai/dsh-dingtalk-host": "workspace:^",
     "@deepseek-ai/dsh-pve-host": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-scheduler-host": "workspace:^"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-agent": "workspace:^",
@@ -99,6 +100,7 @@
     "@deepseek-ai/dsh-typert-registry": "workspace:^",
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/dsh-dingtalk-host": "workspace:^",
-    "@deepseek-ai/dsh-pve-host": "workspace:^"
+    "@deepseek-ai/dsh-pve-host": "workspace:^",
+    "@deepseek-ai/dsh-scheduler-host": "workspace:^"
   }
 }

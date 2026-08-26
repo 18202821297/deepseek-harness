@@ -10,6 +10,7 @@ import messageFeedbackRemote from '@deepseek-ai/dsh-message-feedback/remote'
 import sessionReferencesRemote from '@deepseek-ai/dsh-session-reference/remote'
 import dingtalkRemote from '@deepseek-ai/dsh-dingtalk-host/remote'
 import pveRemote from '@deepseek-ai/dsh-pve-host/remote'
+import schedulerRemote from '@deepseek-ai/dsh-scheduler-host/remote'
 import type { TypertClientRemote } from '@deepseek-ai/dsh-typert-protocol'
 
 export type { TypertClientRemote as ClientRemote } from '@deepseek-ai/dsh-typert-protocol'
@@ -22,6 +23,7 @@ export type {} from '@deepseek-ai/dsh-message-feedback/remote'
 export type {} from '@deepseek-ai/dsh-session-reference/remote'
 export type {} from '@deepseek-ai/dsh-dingtalk-host/remote'
 export type {} from '@deepseek-ai/dsh-pve-host/remote'
+export type {} from '@deepseek-ai/dsh-scheduler-host/remote'
 // The forwarded-event allowlist's selection seat: without it in the consumer's
 // compilation face `TypertRemoteEvent` is `never` and every `$on` call fails.
 export type { ApiRemoteForwardedEvent } from '../types.ts'
@@ -120,7 +122,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
     for (const contribution of [
       commandsRemote, goalsRemote, dynamicRemote, fileReferencesRemote,
       pluginInventoryRemote, messageFeedbackRemote, sessionReferencesRemote,
-      dingtalkRemote, pveRemote,
+      dingtalkRemote, pveRemote, schedulerRemote,
     ]) {
       disposers.push(await ctx.remote.$mount(contribution))
     }

@@ -62,6 +62,9 @@
     },
     {
       "path": "../../pve/pve-host"
+    },
+    {
+      "path": "../../scheduler/scheduler-host"
     }
   ]
 }

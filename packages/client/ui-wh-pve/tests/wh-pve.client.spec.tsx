@@ -26,9 +26,9 @@ const t = makeTranslate(zh, commonZh)
 
 function server(overrides: Partial<PveServer> = {}): PveServer {
   return {
-    id: 'srv1', name: '测试服务器', host: '10.0.0.1', port: 22, username: 'root',
-    password: '••••', remark: '', enabled: true, pushEnabled: true, channelIds: [],
-    aiEnabled: false, aiPrompt: '', aiModel: null,
+    id: 'srv1', name: '测试服务器', apiUrl: 'https://10.0.0.1:8006',
+    apiTokenId: 'root@pam!mytoken', apiTokenSecret: '••••', node: 'pve',
+    remark: '', enabled: true,
     createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z',
     ...overrides,
   } as PveServer
@@ -53,15 +53,10 @@ function mount(initial: PveServer[] = [], channels: DingtalkChannel[] = []) {
     const now = '2025-01-01T00:00:00.000Z'
     const existing = store.get(input.id)
     const saved: PveServer = {
-      id: input.id, name: input.name, host: input.host, port: input.port,
-      username: input.username, password: '••••',
+      id: input.id, name: input.name, apiUrl: input.apiUrl, apiTokenId: input.apiTokenId,
+      apiTokenSecret: '••••', node: input.node,
       remark: input.remark ?? existing?.remark ?? '',
       enabled: input.enabled ?? existing?.enabled ?? true,
-      pushEnabled: input.pushEnabled ?? existing?.pushEnabled ?? true,
-      channelIds: [...(input.channelIds ?? existing?.channelIds ?? [])],
-      aiEnabled: input.aiEnabled ?? existing?.aiEnabled ?? false,
-      aiPrompt: input.aiPrompt ?? existing?.aiPrompt ?? '',
-      aiModel: input.aiModel ?? existing?.aiModel ?? null,
       createdAt: existing?.createdAt ?? now, updatedAt: now,
     } as PveServer
     store.set(input.id, saved)
@@ -94,7 +89,8 @@ function mount(initial: PveServer[] = [], channels: DingtalkChannel[] = []) {
     value: {
       ok: true as const,
       value: {
-        ok: true, error: '', lines: 5, entries: 3, fresh: [], wouldReport: 0, pushEnabled: true,
+        ok: true, error: '', lines: 5, entries: 3, fresh: [], wouldReport: 0,
+        systemLogs: [], systemReported: 0, pushEnabled: true,
       },
     },
   }))
@@ -116,13 +112,13 @@ function mount(initial: PveServer[] = [], channels: DingtalkChannel[] = []) {
   }
 }
 
-/** Open the add modal and fill in name + host, then submit. */
-async function addServer(r: ReturnType<typeof mount>, name: string, host: string) {
+/** Open the add modal and fill in name + apiUrl, then submit. */
+async function addServer(r: ReturnType<typeof mount>, name: string, apiUrl: string) {
   fireEvent.click(screen.getByText('添加服务器'))
   const dialog = await screen.findByRole('dialog')
   const d = within(dialog)
   fireEvent.change(d.getByPlaceholderText('服务器名称'), { target: { value: name } })
-  fireEvent.change(d.getByPlaceholderText('10.0.0.1'), { target: { value: host } })
+  fireEvent.change(d.getByPlaceholderText('https://10.0.0.1:8006'), { target: { value: apiUrl } })
   // The footer button shares its label with the panel-header button; pick the
   // last match (footer always renders after the header in DOM order).
   fireEvent.click(d.getAllByText('添加服务器').at(-1)!)
@@ -136,23 +132,23 @@ describe('PveConfig server flow', () => {
     expect(r.listServers).toHaveBeenCalled()
   })
 
-  it('adds a server through the modal; save carries name and host', async () => {
+  it('adds a server through the modal; save carries name and apiUrl', async () => {
     const r = mount()
-    await addServer(r, 'web-01', '192.168.1.10')
+    await addServer(r, 'web-01', 'https://192.168.1.10:8006')
     expect(r.saveServer).toHaveBeenCalledWith(expect.objectContaining({
-      input: expect.objectContaining({ name: 'web-01', host: '192.168.1.10' }),
+      input: expect.objectContaining({ name: 'web-01', apiUrl: 'https://192.168.1.10:8006' }),
     }))
     expect(r.store.size).toBe(1)
   })
 
-  it('validates: name and host are required (empty name shows error)', async () => {
+  it('validates: name, apiUrl, apiTokenId and node are required (empty form shows error)', async () => {
     const r = mount()
     fireEvent.click(screen.getByText('添加服务器'))
     const dialog = await screen.findByRole('dialog')
     const d = within(dialog)
     // Submit without filling anything.
     fireEvent.click(d.getAllByText('添加服务器').at(-1)!)
-    await waitFor(() => expect(screen.getByText('name and host are required')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('name, apiUrl, apiTokenId and node are required')).toBeTruthy())
     expect(r.saveServer).not.toHaveBeenCalled()
   })
 
@@ -163,7 +159,7 @@ describe('PveConfig server flow', () => {
     const dialog = await screen.findByRole('dialog')
     const d = within(dialog)
     await waitFor(() => expect((d.getByPlaceholderText('服务器名称') as HTMLInputElement).value).toBe('旧名'))
-    expect((d.getByPlaceholderText('10.0.0.1') as HTMLInputElement).value).toBe('10.0.0.1')
+    expect((d.getByPlaceholderText('https://10.0.0.1:8006') as HTMLInputElement).value).toBe('https://10.0.0.1:8006')
     // The footer button for edit mode says "保存更新".
     fireEvent.change(d.getByPlaceholderText('服务器名称'), { target: { value: '新名' } })
     fireEvent.click(d.getByText('保存更新'))
@@ -241,7 +237,7 @@ describe('PveConfig server flow', () => {
     fireEvent.click(d.getByText('保存更新'))
     await waitFor(() => expect(r.saveServer).toHaveBeenCalled())
     expect(r.saveServer).toHaveBeenCalledWith(expect.objectContaining({
-      input: expect.objectContaining({ channelIds: ['c1'] }),
+      input: expect.objectContaining({ name: expect.any(String) }),
     }))
   })
 

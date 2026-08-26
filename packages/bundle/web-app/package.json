@@ -116,7 +116,9 @@
     "@deepseek-ai/dsh-pve-host": "workspace:^",
     "@deepseek-ai/dsh-client-ui-wh-im-channels": "workspace:^",
     "@deepseek-ai/dsh-client-ui-wh-pve": "workspace:^",
-    "open": "^11.0.0"
+    "open": "^11.0.0",
+    "@deepseek-ai/dsh-scheduler-host": "workspace:^",
+    "@deepseek-ai/dsh-client-ui-wh-scheduler": "workspace:^"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis-plugin-loader": "workspace:^",

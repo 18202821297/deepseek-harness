@@ -893,6 +893,9 @@ importers:
       '@deepseek-ai/dsh-pve-host':
         specifier: workspace:^
         version: link:../../pve/pve-host
+      '@deepseek-ai/dsh-scheduler-host':
+        specifier: workspace:^
+        version: link:../../scheduler/scheduler-host
       '@deepseek-ai/dsh-session':
         specifier: workspace:^
         version: link:../../core/session
@@ -1404,6 +1407,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-wh-pve':
         specifier: workspace:^
         version: link:../../client/ui-wh-pve
+      '@deepseek-ai/dsh-client-ui-wh-scheduler':
+        specifier: workspace:^
+        version: link:../../client/ui-wh-scheduler
       '@deepseek-ai/dsh-client-ui-workflow-run':
         specifier: workspace:^
         version: link:../../client/ui-workflow-run
@@ -1461,6 +1467,9 @@ importers:
       '@deepseek-ai/dsh-pve-host':
         specifier: workspace:^
         version: link:../../pve/pve-host
+      '@deepseek-ai/dsh-scheduler-host':
+        specifier: workspace:^
+        version: link:../../scheduler/scheduler-host
       '@deepseek-ai/dsh-session-log-export':
         specifier: workspace:^
         version: link:../../session-query/session-log-export
@@ -3175,6 +3184,43 @@ importers:
       '@deepseek-ai/dsh-pve-host':
         specifier: workspace:^
         version: link:../../pve/pve-host
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-client-locale':
+        specifier: workspace:^
+        version: link:../locale
+      '@deepseek-ai/dsh-client-test-runtime':
+        specifier: workspace:^
+        version: link:../../test-support/client-runtime
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@testing-library/react':
+        specifier: ^16.1.0
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@types/react':
+        specifier: ~18.3.1
+        version: 18.3.31
+
+  packages/client/ui-wh-scheduler:
+    dependencies:
+      '@deepseek-ai/dsh-client-runtime':
+        specifier: workspace:^
+        version: link:../runtime
+      '@deepseek-ai/dsh-client-ui-primitives':
+        specifier: workspace:^
+        version: link:../ui-primitives
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: workspace:^
+        version: link:../ui-slots
+      '@deepseek-ai/dsh-scheduler-host':
+        specifier: workspace:^
+        version: link:../../scheduler/scheduler-host
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -6026,6 +6072,9 @@ importers:
       '@deepseek-ai/dsh-llm':
         specifier: workspace:^
         version: link:../../llm/llm
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
       ssh2:
         specifier: ^1.16.0
         version: 1.17.0
@@ -6190,6 +6239,43 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: workspace:^
         version: link:../../core/tools
+
+  packages/scheduler/scheduler-host:
+    dependencies:
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-llm':
+        specifier: workspace:^
+        version: link:../../llm/llm
+      '@deepseek-ai/dsh-pve-host':
+        specifier: workspace:^
+        version: link:../../pve/pve-host
+      '@deepseek-ai/dsh-skill':
+        specifier: workspace:^
+        version: link:../../skill/skill
+      '@deepseek-ai/dsh-storage':
+        specifier: workspace:^
+        version: link:../../storage/storage
+      '@deepseek-ai/dsh-storage-domain':
+        specifier: workspace:^
+        version: link:../../storage/storage-domain
+      '@deepseek-ai/dsh-storage-json':
+        specifier: workspace:^
+        version: link:../../storage/storage-json
+      '@deepseek-ai/dsh-typert-protocol':
+        specifier: workspace:^
+        version: link:../../typert/protocol
 
   packages/sdk/client:
     devDependencies:

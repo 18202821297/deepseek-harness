@@ -7,6 +7,10 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
+
+/** Cap on one analysis call; a slow/hung model is cut short with a note. */
+const ANALYZE_TIMEOUT_MS = 20_000
 
 /** What one analysis needs. */
 export interface AnalyzeInput {
@@ -28,7 +32,11 @@ export async function analyzeAlert(ctx: Context, input: AnalyzeInput): Promise<s
   const llm = ctx.reflect.get('llm', false) as
     | {
       prepareCall(config: unknown): Promise<{
-        stream(options: unknown): AsyncIterable<{ type: string; text?: string }>
+        stream(options: unknown): AsyncIterable<{
+          type: string
+          text?: string
+          reason?: { kind?: string; failure?: { message?: string } }
+        }>
       }>
     }
     | undefined
@@ -47,14 +55,27 @@ export async function analyzeAlert(ctx: Context, input: AnalyzeInput): Promise<s
       provider: selection.provider,
       model: selection.model,
       messages: [
-        { role: 'user' as const, content: `${input.prompt}\n\n${input.alertText}` },
+        createUserMessage({
+          content: [{ type: 'text', text: `${input.prompt}\n\n${input.alertText}` }],
+          source: { kind: 'plugin', plugin: 'pve' },
+        }),
       ],
       system: '你是运维告警分析助手。基于用户提示词分析告警，输出简明的中文分析结论。',
     }
     const prepared = await llm.prepareCall(config)
     let text = ''
+    const deadline = Date.now() + ANALYZE_TIMEOUT_MS
     for await (const chunk of prepared.stream({ ...config })) {
-      if (chunk.type === 'text-delta' && typeof chunk.text === 'string') text += chunk.text
+      if (Date.now() > deadline) {
+        // Break closes the stream; the raw alert text is kept below the note.
+        text += '\n(AI 分析超时，以下为原始明细)'
+        break
+      }
+      if (chunk.type === 'text-delta' && typeof chunk.text === 'string') {
+        text += chunk.text
+      } else if (chunk.type === 'finish' && chunk.reason?.kind === 'error') {
+        return `(AI 分析失败: ${chunk.reason.failure?.message ?? '未知错误'})`
+      }
     }
     return text.trim() || '(AI 分析返回空内容)'
   } catch (error) {

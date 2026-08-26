@@ -31,11 +31,8 @@ export function apply(ctx: ClientContext): void {
     saveServer: input => ctx.remote.pve.saveServer(input),
     deleteServer: input => ctx.remote.pve.deleteServer(input),
     setEnabled: input => ctx.remote.pve.setEnabled(input),
-    setPushEnabled: input => ctx.remote.pve.setPushEnabled(input),
     collectNow: input => ctx.remote.pve.collectNow(input),
     collectTest: input => ctx.remote.pve.collectTest(input),
-    listChannels: input => ctx.remote.dingtalk.listChannels(input),
-    listModels: input => ctx.remote.pve.listModels(input),
   })
   ctx.slots.inject('settings.plugins.tab', () => ctx.slots.register({
     name: 'settings.plugins.tab',

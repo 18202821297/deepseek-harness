@@ -12,27 +12,30 @@
 import { z } from 'zod'
 import { defineDomain, domainTable } from '@deepseek-ai/dsh-storage-domain'
 
-/** Durable shape of one PVE server. `password` holds the encrypted form. */
+/** Durable shape of one PVE server. `apiTokenSecret` holds the encrypted form. */
 export const serverRecord = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  host: z.string().min(1),
-  port: z.number().int().min(1).max(65535),
-  username: z.string().min(1),
-  /** AES-256-GCM encrypted password (blank when none). */
-  password: z.string().default(''),
+  /**
+   * PVE API base URL, e.g. `https://10.0.0.1:8006`. Defaulted (not strictly
+   * required) so records persisted by the pre-API schema (which had no API
+   * fields) still load; `saveServer` still enforces a non-empty http(s) URL.
+   */
+  apiUrl: z.string().min(1).default(''),
+  /**
+   * PVE API token id, e.g. `root@pam!mytoken`. Defaulted for the same
+   * legacy-record compatibility reason as `apiUrl`.
+   */
+  apiTokenId: z.string().min(1).default(''),
+  /** AES-256-GCM encrypted API token secret (blank when none). */
+  apiTokenSecret: z.string().default(''),
+  /** PVE node name, e.g. `pve`. Defaulted for legacy-record compatibility. */
+  node: z.string().min(1).default(''),
   /** Free-form operator note (no encryption; non-sensitive). */
   remark: z.string().default(''),
   enabled: z.boolean().default(true),
-  /** Off = collection still runs but alerts are NOT delivered anywhere. */
-  pushEnabled: z.boolean().default(true),
-  channelIds: z.array(z.string()).default([]),
-  aiEnabled: z.boolean().default(false),
-  aiPrompt: z.string().default(''),
-  aiModel: z.object({
-    provider: z.string().min(1),
-    model: z.string().min(1),
-  }).nullable().default(null),
+  /** Also collect node system logs (err/warning) alongside PVE task failures. */
+  systemLogEnabled: z.boolean().default(false),
   createdAt: z.string(),
   updatedAt: z.string(),
 })
@@ -45,9 +48,9 @@ export const MAX_TRACKED_UPIDS = 500
 
 /**
  * Per-server collection state. `processedUpids` is a bounded, append-mostly
- * set of task UPIDs already reported; `lastIndexLines` detects index-file
- * rotation (a sudden line-count drop means `index` was rotated to `index.1`
- * and the rotated file must be re-read to not miss entries).
+ * set of task UPIDs already reported. `lastIndexLines` is retained for
+ * storage compatibility with the file-based collector; in API mode it simply
+ * mirrors the last task count and is not used for rotation detection.
  */
 export const taskStateRecord = z.object({
   processedUpids: z.array(z.string()).default([]),
@@ -57,6 +60,21 @@ export const taskStateRecord = z.object({
 /** One stored task-state record. */
 export type TaskStateRecord = z.infer<typeof taskStateRecord>
 
+/** How many already-reported system-log hashes to keep per server (trimmed on write). */
+export const MAX_TRACKED_SYSLOG_HASHES = 2000
+
+/**
+ * Per-server system-log collection state. System logs have no UPID, so dedup
+ * uses a hash of (timestamp + unit + message). The collector scans a fixed
+ * recent window each run and drops already-seen hashes.
+ */
+export const syslogStateRecord = z.object({
+  processedHashes: z.array(z.string()).default([]),
+})
+
+/** One stored syslog-state record. */
+export type SyslogStateRecord = z.infer<typeof syslogStateRecord>
+
 /** The PVE domain spec. */
 export const pveDomainSpec = defineDomain({
   name: 'pve',
@@ -64,5 +82,6 @@ export const pveDomainSpec = defineDomain({
   tables: {
     servers: domainTable<ServerRecord['id'], ServerRecord>(serverRecord),
     task_state: domainTable<string, TaskStateRecord>(taskStateRecord),
+    syslog_state: domainTable<string, SyslogStateRecord>(syslogStateRecord),
   },
 })

@@ -81,7 +81,7 @@
 2. **ctx 服务访问**：要访问 `ctx.xxx` 必须声明 `static inject`，否则 `cannot get property without inject`。可选能力用 `ctx.reflect.get('xxx', false)`（返回 undefined 不抛错）。
 3. **Session 事件类型**：`assistant/message` 的 data 是 `{ message: { content: ContentBlock[] } }`，文本在 `type:'text'` 块的 `.text`。
 4. **clientSecret 加密**：AES-256-GCM，`encryptSecret`/`decryptSecret`/`maskSecret`；Remote 只返回掩码。
-5. **每次改 Host Remote 类型后**：`build:lib:host` → `pnpm --filter @deepseek-ai/dsh-api-remotes bundle` → `pnpm --filter @deepseek-ai/dsh-client-ui-wh-im-channels bundle` → 重启 web → 强刷浏览器（skill 已记）。
+5. **每次改 Host Remote 类型后**：`pnpm run build:lib:host` → `pnpm run build:lib:client`（含 api-remotes 客户端包重生成 + 客户端 bundle）→ 重启 web → 强刷浏览器（skill 已记）。
 6. **Storage schema 变更**：旧 channels.json 会崩启动（invalid-record），开发期直接删 `~/.dsh/storages/channels.json`。
 
 ## 6. Skill 约束

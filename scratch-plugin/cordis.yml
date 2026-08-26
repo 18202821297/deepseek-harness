@@ -1,0 +1,6 @@
+- insert:
+    - id: hello
+      name: '/Users/mac/Documents/脚本/deepseek-harness/scratch-plugin/src/my-plugin.ts'
+      config:
+        greeting: 'Hello'
+        maxRetries: 3

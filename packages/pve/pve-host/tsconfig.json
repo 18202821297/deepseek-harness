@@ -12,6 +12,8 @@
     { "path": "../../storage/storage-domain" },
     { "path": "../../typert/protocol" },
     { "path": "../../runtime-diagnostics/invariants" },
-    { "path": "../../llm/llm" }
+    { "path": "../../llm/llm" },
+    { "path": "../../core/agent" },
+    { "path": "../../core/tools" }
   ]
 }

@@ -74,6 +74,9 @@
     - id: pve-host
       name: '@deepseek-ai/dsh-pve-host'
 
+    - id: scheduler-host
+      name: '@deepseek-ai/dsh-scheduler-host'
+
     # Browser Session export: `/export` command plus the shared download dialog.
     - id: session-log-download
       name: '@deepseek-ai/dsh-session-log-export'
@@ -280,6 +283,9 @@
 
     - id: ui-wh-pve
       name: '@deepseek-ai/dsh-client-ui-wh-pve'
+
+    - id: ui-wh-scheduler
+      name: '@deepseek-ai/dsh-client-ui-wh-scheduler'
 
     # Model selection: the /model popupSelect + composer seat over session.models.
     - id: ui-model-selection

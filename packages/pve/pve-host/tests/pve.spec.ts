@@ -1,7 +1,7 @@
 /**
  * Host-side unit tests for PveService — real storage backend in a temp dir,
- * fake SSH connector and fake alert sender injected through the constructor
- * options, so no network is touched.
+ * fake PVE API connector and fake alert sender injected through the
+ * constructor options, so no network is touched.
  */
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -12,42 +12,51 @@ import Storage from '@deepseek-ai/dsh-storage'
 import * as StorageJson from '@deepseek-ai/dsh-storage-json'
 import * as StorageDomain from '@deepseek-ai/dsh-storage-domain'
 import PveService from '../src/index.ts'
-import type { SshConnector, SshFileReader } from '../src/ssh.ts'
+import type { PveApiClient, PveApiConnector, PveApiResult } from '../src/api.ts'
+
+/** In-memory state backing the fake API (what the real endpoints would return). */
+interface ApiState {
+  tasks: unknown[]
+  taskLogs: Record<string, unknown[]>
+  syslog: unknown[]
+}
 
 interface Harness {
   ctx: Context
   root: string
   service: PveService
   sender: ReturnType<typeof vi.fn>
-  files: Map<string, string>
+  apiState: ApiState
   dispose: () => Promise<void>
 }
 
+/** Build a fake PVE API client backed by the in-memory ApiState. */
+function fakeApi(state: ApiState): PveApiClient {
+  const ok = (data: unknown): PveApiResult => ({ ok: true, status: 200, error: '', data })
+  return {
+    listTasks: async () => ok(state.tasks),
+    getTaskLog: async upid => ok(state.taskLogs[upid] ?? []),
+    getSyslog: async () => ok(state.syslog),
+    close: () => {},
+  }
+}
+
 /**
- * Compose the service over the real storage stack with a fake SSH connector
- * reading from an in-memory file map, and a fake alert sender.
+ * Compose the service over the real storage stack with a fake PVE API
+ * connector and a fake alert sender.
  */
 async function setupHarness(): Promise<Harness> {
   const root = await mkdtemp(join(tmpdir(), 'dsh-pve-test-'))
   vi.stubEnv('DSH_PVE_SECRET_KEY', 'test-key')
-  const files = new Map<string, string>()
-  const reader: SshFileReader = {
-    readFile: async (path) => {
-      const content = files.get(path)
-      return content === undefined
-        ? { ok: false, error: `no such file: ${path}`, content: '' }
-        : { ok: true, error: '', content }
-    },
-    close: () => {},
-  }
-  const ssh: SshConnector = async () => reader
+  const apiState: ApiState = { tasks: [], taskLogs: {}, syslog: [] }
+  const api: PveApiConnector = () => fakeApi(apiState)
   const sender = vi.fn(async () => true)
   const ctx = new Context()
   try {
     await ctx.plugin(Storage)
     await ctx.plugin(StorageJson, { root })
     await ctx.plugin(StorageDomain, { backend: 'json' })
-    await ctx.plugin(PveService, { ssh, sender })
+    await ctx.plugin(PveService, { api, sender })
   } catch (error) {
     await ctx.fiber.dispose()
     await rm(root, { recursive: true, force: true })
@@ -60,7 +69,7 @@ async function setupHarness(): Promise<Harness> {
     root,
     service,
     sender,
-    files,
+    apiState,
     async dispose() {
       await ctx.fiber.dispose()
       await rm(root, { recursive: true, force: true })
@@ -74,190 +83,173 @@ afterEach(async () => {
   vi.unstubAllEnvs()
 })
 
-const OK_LINE = 'UPID:pve:0000ABCD:0009A3F5:660D1B2A:vzdump:100:root@pam:\tbackup vm 100\tOK'
-const FAIL_A = 'UPID:pve:0000ABCE:0009A3F5:660D1B2B:qmigrate:101:root@pam:\tmigrate failed\tcommand failed with exit code 255'
-const FAIL_B = 'UPID:pve:0000ABCF:0009A3F5:660D1B2C:vzdump:102:root@pam:\tjson tail\tunable to lock VM 102'
-const INDEX = '/var/log/pve/tasks/index'
-const INDEX_1 = '/var/log/pve/tasks/index.1'
+/** One task object as the PVE `/nodes/{node}/tasks` API returns it. */
+function task(upid: string, status: string): { upid: string; status: string } {
+  return { upid, status }
+}
+
+const OK_A = task('UPID:pve:0000ABCD:0009A3F5:660D1B2A:vzdump:100:root@pam:', 'OK')
+const FAIL_A = task('UPID:pve:0000ABCE:0009A3F5:660D1B2B:qmigrate:101:root@pam:', 'command failed with exit code 255')
+const FAIL_B = task('UPID:pve:0000ABCF:0009A3F5:660D1B2C:vzdump:102:root@pam:', 'unable to lock VM 102')
 
 function input(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     id: 'srv1',
     name: '主节点',
-    host: '10.1.0.5',
-    port: 22,
-    username: 'root',
-    password: 'hunter2',
+    apiUrl: 'https://10.1.0.5:8006',
+    apiTokenId: 'root@pam!mytoken',
+    apiTokenSecret: 'hunter2-secret',
+    node: 'pve',
     enabled: true,
-    channelIds: ['ch-dingtalk-1'],
     ...overrides,
   }
 }
 
 describe('PveService', () => {
-  it('saveServer then listServers returns the server with a masked password', async () => {
+  it('saveServer then listServers returns the server with a masked token secret', async () => {
     const h = await setupHarness()
     harnesses.push(h)
     const saved = await h.service.saveServer({ input: input() as never })
     expect(saved.ok).toBe(true)
     if (!saved.ok) return
-    expect(saved.value.password).not.toContain('hunter2')
-    expect(saved.value.password).toContain('••••')
+    expect(saved.value.apiTokenSecret).not.toContain('hunter2-secret')
+    expect(saved.value.apiTokenSecret).toContain('••••')
 
     // On disk: the plaintext must never appear; the encrypted form must.
     const raw = await readFile(join(h.root, 'pve.json'), 'utf8')
-    expect(raw).not.toContain('hunter2')
+    expect(raw).not.toContain('hunter2-secret')
   })
 
-  it('rejects non-path-safe ids and empty fields', async () => {
+  it('rejects non-path-safe ids, empty fields, and non-http(s) apiUrl', async () => {
     const h = await setupHarness()
     harnesses.push(h)
     const bad = await h.service.saveServer({ input: input({ id: '../x' }) as never })
     expect(bad.ok).toBe(false)
     const empty = await h.service.saveServer({ input: input({ name: ' ' }) as never })
     expect(empty.ok).toBe(false)
-    const badPort = await h.service.saveServer({ input: input({ port: 0 }) as never })
-    expect(badPort.ok).toBe(false)
+    const badUrl = await h.service.saveServer({ input: input({ apiUrl: '10.0.0.1:8006' }) as never })
+    expect(badUrl.ok).toBe(false)
+    const noNode = await h.service.saveServer({ input: input({ node: '' }) as never })
+    expect(noNode.ok).toBe(false)
   })
 
-  it('edit with blank password keeps the stored one', async () => {
+  it('edit with blank token secret keeps the stored one', async () => {
     const h = await setupHarness()
     harnesses.push(h)
     await h.service.saveServer({ input: input() as never })
-    const edited = await h.service.saveServer({ input: input({ name: '改名', password: '' }) as never })
+    const edited = await h.service.saveServer({ input: input({ name: '改名', apiTokenSecret: '' }) as never })
     expect(edited.ok).toBe(true)
-    // collectNow against a fake SSH still works, proving the old password survived.
-    h.files.set(INDEX, OK_LINE)
+    // collectNow against the fake API still works, proving the old secret survived.
+    h.apiState.tasks = [FAIL_A]
     const collect = await h.service.collectNow({ id: 'srv1' })
     expect(collect.ok).toBe(true)
     if (collect.ok) expect(collect.value.error).toBe('')
   })
 
-  it('collectNow reports new failed tasks once, never twice', async () => {
+  it('collectNow reports new failed tasks until confirmDelivered marks them', async () => {
     const h = await setupHarness()
     harnesses.push(h)
     await h.service.saveServer({ input: input() as never })
-    h.files.set(INDEX, [OK_LINE, FAIL_A, FAIL_B].join('\n'))
+    h.apiState.tasks = [OK_A, FAIL_A, FAIL_B]
 
     const first = await h.service.collectNow({ id: 'srv1' })
     expect(first.ok).toBe(true)
     if (!first.ok) return
     expect(first.value.reported).toBe(2)
+    expect(first.value.fresh?.length).toBe(2)
 
-    // Same file again: nothing new, nothing re-sent.
-    h.sender.mockClear()
+    // Nothing delivered yet: the same tasks stay fresh (at-least-once retry).
+    const retry = await h.service.collectNow({ id: 'srv1' })
+    expect(retry.ok).toBe(true)
+    if (!retry.ok) return
+    expect(retry.value.reported).toBe(2)
+
+    // After a successful "push", confirm marks them: they stop re-firing.
+    const confirm = await h.service.confirmDelivered({ id: 'srv1', upids: [FAIL_A.upid, FAIL_B.upid] })
+    expect(confirm.ok).toBe(true)
+    if (!confirm.ok) return
+    expect(confirm.value.markedUpids).toBe(2)
+
     const second = await h.service.collectNow({ id: 'srv1' })
     expect(second.ok).toBe(true)
     if (!second.ok) return
     expect(second.value.reported).toBe(0)
-    expect(h.sender).not.toHaveBeenCalled()
   })
 
-  it('sender failure does not cause a re-send on the next run', async () => {
+  it('dedup state survives a service restart over the same storage', async () => {
     const h = await setupHarness()
     harnesses.push(h)
     await h.service.saveServer({ input: input() as never })
-    h.files.set(INDEX, [FAIL_A].join('\n'))
-
-    // First run: delivery fails.
-    h.sender.mockImplementation(async () => false)
-    const first = await h.service.collectNow({ id: 'srv1' })
-    expect(first.ok).toBe(true)
-    if (!first.ok) return
-    expect(first.value.reported).toBe(0)
-
-    // Second run over the same file: the task is already marked; no re-send.
-    h.sender.mockClear()
-    h.sender.mockImplementation(async () => true)
-    const second = await h.service.collectNow({ id: 'srv1' })
-    expect(second.ok).toBe(true)
-    if (!second.ok) return
-    expect(second.value.reported).toBe(0)
-    expect(h.sender).not.toHaveBeenCalled()
-  })
-
-  it('rotation fallback re-reads index.1 and reports tasks that only lived there', async () => {
-    const h = await setupHarness()
-    harnesses.push(h)
-    await h.service.saveServer({ input: input() as never })
-    // Run 1: big index with FAIL_A near the tail.
-    const bigIndex = [OK_LINE, FAIL_A, ...Array.from({ length: 50 }, (_, i) => `UPID:pve:0000F${i}:0009A3F5:660D1B2D:job:${i}:root@pam:\tstuff\tOK`)].join('\n')
-    h.files.set(INDEX, bigIndex)
+    h.apiState.tasks = [FAIL_A]
     const first = await h.service.collectNow({ id: 'srv1' })
     expect(first.ok).toBe(true)
     if (!first.ok) return
     expect(first.value.reported).toBe(1)
+    // Mark delivered so the state table holds the UPID across the restart.
+    const confirm = await h.service.confirmDelivered({ id: 'srv1', upids: [FAIL_A.upid] })
+    expect(confirm.ok).toBe(true)
 
-    // Run 2: the index rotated (shrank); FAIL_A moved to index.1, FAIL_B is new.
-    h.files.set(INDEX, [OK_LINE, FAIL_B].join('\n'))
-    h.files.set(INDEX_1, [FAIL_A].join('\n'))
-    h.sender.mockClear()
-    const second = await h.service.collectNow({ id: 'srv1' })
-    expect(second.ok).toBe(true)
-    if (!second.ok) return
-    // Only FAIL_B is new; FAIL_A was already reported (dedup holds across rotation).
-    expect(second.value.reported).toBe(1)
-
-    // Rotation gap: a task born between runs lives ONLY in index.1 (never
-    // seen in any earlier run); it must still be picked up. FAIL_B was already
-    // reported in run 2, so a fresh UPID is required here.
-    const FAIL_C = 'UPID:pve:0000ABD0:0009A3F5:660D1B2E:vzdump:103:root@pam:\tgap task\tbackup failed'
-    h.files.set(INDEX_1, [FAIL_C].join('\n'))
-    h.files.set(INDEX, [OK_LINE].join('\n'))
-    const stateFile = JSON.parse(await readFile(join(h.root, 'pve.json'), 'utf8')) as { tables: { task_state: Record<string, { processedUpids: string[]; lastIndexLines: number }> } }
-    const state = stateFile.tables.task_state['srv1']!
-    state.lastIndexLines = 500
-    const { writeFileSync } = await import('node:fs')
-    writeFileSync(join(h.root, 'pve.json'), JSON.stringify(stateFile))
-    // Reload service over the mutated state (fresh context, same root).
+    // Reload the service over the same root (fresh context, same storage).
     const ctx2 = new Context()
     await ctx2.plugin(Storage)
     await ctx2.plugin(StorageJson, { root: h.root })
     await ctx2.plugin(StorageDomain, { backend: 'json' })
-    const sender2 = vi.fn(async () => true)
-    const files2 = h.files
-    await ctx2.plugin(PveService, {
-      ssh: async () => ({
-        readFile: async (path) => {
-          const content = files2.get(path)
-          return content === undefined ? { ok: false, error: 'missing', content: '' } : { ok: true, error: '', content }
-        },
-        close: () => {},
-      }),
-      sender: sender2,
-    })
+    const state2 = h.apiState
+    await ctx2.plugin(PveService, { api: () => fakeApi(state2), sender: vi.fn(async () => true) })
     const service2 = ctx2.pve as unknown as PveService
-    const rotated = await service2.collectNow({ id: 'srv1' })
-    expect(rotated.ok).toBe(true)
-    if (!rotated.ok) return
-    expect(rotated.value.reported).toBe(1)
+    const second = await service2.collectNow({ id: 'srv1' })
+    expect(second.ok).toBe(true)
+    if (!second.ok) return
+    expect(second.value.reported).toBe(0)
     await ctx2.fiber.dispose()
+  })
+
+  it('collectTest previews fresh tasks without marking them reported', async () => {
+    const h = await setupHarness()
+    harnesses.push(h)
+    await h.service.saveServer({ input: input() as never })
+    h.apiState.tasks = [OK_A, FAIL_A]
+
+    const probe = await h.service.collectTest({ id: 'srv1' })
+    expect(probe.ok).toBe(true)
+    if (!probe.ok) return
+    expect(probe.value.ok).toBe(true)
+    expect(probe.value.wouldReport).toBe(1)
+
+    // collectTest is a dry-run: a real collect still reports the same task.
+    const collect = await h.service.collectNow({ id: 'srv1' })
+    expect(collect.ok).toBe(true)
+    if (!collect.ok) return
+    expect(collect.value.reported).toBe(1)
   })
 
   it('deleteServer keeps state by default and removes it when opted in', async () => {
     const h = await setupHarness()
     harnesses.push(h)
     await h.service.saveServer({ input: input() as never })
-    h.files.set(INDEX, [FAIL_A].join('\n'))
+    h.apiState.tasks = [FAIL_A]
     await h.service.collectNow({ id: 'srv1' })
+    await h.service.confirmDelivered({ id: 'srv1', upids: [FAIL_A.upid] })
 
     const del = await h.service.deleteServer({ id: 'srv1' })
     expect(del.ok).toBe(true)
     if (!del.ok) return
     expect(del.value.deleted).toBe(true)
 
-    // State survived: re-add the same id and collect the same file — no re-fire.
+    // State survived: re-add the same id and collect the same task — no re-fire.
     await h.service.saveServer({ input: input() as never })
-    h.sender.mockClear()
-    await h.service.collectNow({ id: 'srv1' })
-    expect(h.sender).not.toHaveBeenCalled()
+    const again = await h.service.collectNow({ id: 'srv1' })
+    expect(again.ok).toBe(true)
+    if (!again.ok) return
+    expect(again.value.reported).toBe(0)
 
     // With removeState: state is gone, so the same task re-fires once.
     await h.service.deleteServer({ id: 'srv1', removeState: true })
     await h.service.saveServer({ input: input() as never })
-    h.sender.mockClear()
-    await h.service.collectNow({ id: 'srv1' })
-    expect(h.sender).toHaveBeenCalledTimes(1)
+    const refired = await h.service.collectNow({ id: 'srv1' })
+    expect(refired.ok).toBe(true)
+    if (!refired.ok) return
+    expect(refired.value.reported).toBe(1)
   })
 
   it('collectNow on a missing server is rejected', async () => {

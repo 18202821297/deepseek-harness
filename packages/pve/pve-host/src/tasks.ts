@@ -23,6 +23,8 @@ export interface PveTaskEntry {
   readonly target: string
   /** The originating user segment of the UPID, may be empty. */
   readonly user: string
+  /** Raw task log body from `/var/log/pve/tasks/<UPID>`, when fetched (may be truncated). */
+  readonly log?: string
 }
 
 /** Match `UPID:<node>:<pid>:<pstart>:<starttime>:<type>:<id>:<user>[:...]`. */
@@ -130,4 +132,43 @@ export function countLines(raw: string): number {
  */
 export function trimProcessed(upids: readonly string[], max: number): string[] {
   return upids.length <= max ? [...upids] : upids.slice(upids.length - max)
+}
+
+/**
+ * Build a task entry from one PVE API task object (the `data` array element
+ * of `GET /nodes/{node}/tasks`). The API already gives a structured `status`
+ * (`OK` / error text); type/target/user are parsed from the UPID segments so
+ * the alert detail matches the file-based format exactly.
+ * @param obj one task object from the API
+ * @returns the entry, or null when it carries no UPID.
+ */
+export function parseApiTask(obj: Record<string, unknown>): PveTaskEntry | null {
+  const upid = typeof obj.upid === 'string' ? obj.upid : ''
+  if (upid.length === 0 || !UPID_RE.test(upid)) return null
+  const status = typeof obj.status === 'string' ? obj.status : ''
+  const seg = upidSegments(upid)
+  return {
+    upid,
+    ok: status === 'OK',
+    status,
+    type: seg[5] ?? '',
+    target: seg[6] ?? '',
+    user: seg[7] ?? '',
+  }
+}
+
+/**
+ * Map a PVE API tasks list (the `data` array) into task entries, in the
+ * returned order (newest first). Malformed entries are dropped.
+ * @param data the `data` array from `GET /nodes/{node}/tasks`
+ */
+export function parseApiTasks(data: unknown): PveTaskEntry[] {
+  if (!Array.isArray(data)) return []
+  const out: PveTaskEntry[] = []
+  for (const item of data) {
+    if (typeof item !== 'object' || item === null) continue
+    const entry = parseApiTask(item as Record<string, unknown>)
+    if (entry !== null) out.push(entry)
+  }
+  return out
 }
